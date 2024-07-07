@@ -14,6 +14,8 @@ const generateToken = new GenerateToken();
 //instantiating PrismaClient
 const prisma = new PrismaClient().$connect().then((client) => {
   console.log('Connected to Prisma Client');
+}).catch(err=>{
+  console.log("Failed to connect to prisma: ",err);
 });
 
 //initialize server
