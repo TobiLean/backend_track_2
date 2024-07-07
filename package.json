@@ -2,10 +2,10 @@
   "name": "backend_track_2",
   "version": "1.0.0",
   "description": "2nd task of the Backend track for hng",
-  "main": "server.js",
+  "main": "api/index.js",
   "scripts": {
-    "serve": "node server.js",
-    "auto": "nodemon server.js",
+    "serve": "node api/index.js",
+    "auto": "nodemon api/index.js",
     "start": "npm run serve",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
