@@ -2,10 +2,11 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import {PrismaClient} from '@prisma/client';
 import crypto from 'node:crypto';
-import {Buffer} from 'node:buffer';
 import GenerateToken from "./src/provider/generateToken.provider.js";
 import BadRequestError, {ValidationError} from './src/customErrors.js';
 import {authenticatedMiddleware} from "./src/middleware/ensureAuthenticated.middleware.js";
+import jwt from 'jsonwebtoken';
+import Validator from 'validatorjs';
 
 //initialise Generate token object
 const generateToken = new GenerateToken();
@@ -29,17 +30,52 @@ function makeId(seed1, seed2 = "") {
     : seed1.substring(0, 2).toLowerCase();
   const bytes = crypto.randomBytes(4).toString('hex');
   let userId = seed + bytes
-  console.log("Random bytes:", userId);
   return userId;
 }
 
 app.post('/auth/register', async (req, res) => {
+
+  const newUserId = makeId(req.body.firstName, req.body.lastName);
+
+  let input = {
+    userId: newUserId,
+    firstName: req.body.firstName,
+    lastName: req.body.lastName,
+    email: req.body.email,
+    password: req.body.password,
+    phone: req.body.phone,
+  }
+
+  const rules = {
+    userId: 'required|string',
+    firstName: 'required|string',
+    lastName: 'required|string',
+    email: 'required|email',
+    password: 'required|min:6', // Minimum 6 characters
+    phone: 'string',
+  };
+
+  const validation = new Validator(input, rules);
+
+  if(validation.fails()) {
+    const errors = validation.errors.all();
+
+    const errorDetails = errors.map((error) => ({
+      field: error.field,
+      message: error.message,
+    }));
+
+    res.status(422).json({
+      errors: errorDetails,
+    });
+  }
+
   const password = req.body.password;
   const hash = crypto.createHash('sha256');
   hash.update(password);
   const hashedPassword = hash.digest('hex');
 
-  const newUserId = makeId(req.body.firstName, req.body.lastName);
+  const newOrgId = makeId(req.body.firstName);
 
   try {
     const user = await prisma.user.create({
@@ -55,11 +91,22 @@ app.post('/auth/register', async (req, res) => {
 
     const organisation = await prisma.organisation.create({
       data: {
-        orgId: makeId(req.body.firstName),
-        name: `${req.body.firstName}'s Oraganisation`,
+        orgId: newOrgId,
+        name: `${req.body.firstName}'s Organisation`,
         description: '',
       },
     })
+
+    console.log("The organization", organisation)
+
+    const orgUser = await prisma.organisationsAndUsers.create({
+      data: {
+        user_id: newUserId,
+        org_id: newOrgId,
+      },
+    })
+
+    console.log("The ordUser", orgUser)
 
     const token = await generateToken.execute(newUserId)
 
@@ -72,8 +119,6 @@ app.post('/auth/register', async (req, res) => {
       }
     });
 
-    // throw new BadRequestError("Registration unsuccessful");
-    // throw new ValidationError("Validation Error");
   } catch (err) {
 
     if (err instanceof BadRequestError) {
@@ -82,12 +127,6 @@ app.post('/auth/register', async (req, res) => {
         "status": err.status,
         "message": err.message,
         "statusCode": err.statusCode,
-      })
-    } else if (err instanceof ValidationError) {
-
-      res.status(422).send({
-        "field": err.field,
-        "message": err.message,
       })
     }
   }
@@ -110,7 +149,7 @@ app.post('/auth/login', async (req, res) => {
       });
 
     if (userExist) {
-      const token = await generateToken.execute(userExist);
+      const token = await generateToken.execute(userExist.userId);
 
       res.status(200).json({
         "status": "success",
@@ -145,6 +184,106 @@ app.get('/api/users/:id', authenticatedMiddleware, async (req, res) => {
   }) : await prisma.organisation.findUnique({
     where: {userId: id},
   });
+
+  res.status(200).json({
+    "status": "success",
+    "message": "Record retreived successfully",
+    "data": {
+      aUser
+    }
+  })
+})
+
+app.get('/api/organisations', authenticatedMiddleware, async (req, res) => {
+  const authHeader = req.headers.authorization
+  const auth = authHeader?.split(' ')[1];
+  const decoded = jwt.verify(auth, process.env.JWT_SECRET);
+  const uId = decoded.userId;
+
+  console.log("org auth: ", req.headers.authorization);
+  console.log("USER ID: ", uId);
+
+  const orgUserRecs = await prisma.organisationsAndUsers.findMany({
+    where: {user_id: uId},
+    select: {org_id: true},
+  })
+  console.log("Org recs", orgUserRecs);
+
+  const orgIds = orgUserRecs.map((rec) => rec.org_id);
+  console.log("Org ids", orgIds);
+
+  const organisations = await prisma.organisation.findMany({
+    where: {orgId: {in: orgIds}},
+  })
+
+  // const orgDetails = await prisma.organisation.findMany()
+
+  res.status(200).json({
+    "status": "success",
+    "message": "Organisations retrieved successfully",
+    "data": {
+      "organisations": organisations
+    }
+  });
+})
+
+app.get('/api/organisations/:orgId', authenticatedMiddleware, async (req, res) => {
+  const id = req.params.orgId;
+
+  const anOrganisation = await prisma.organisation.findUnique({
+    where: {orgId: id},
+  })
+
+  res.status(200).json({
+    "status": "success",
+    "message": "An organisation was retrieved successfully",
+    "data": anOrganisation
+  })
+})
+
+app.post('/api/organisations', authenticatedMiddleware, async (req, res) => {
+  const authHeader = req.headers.authorization
+  const auth = authHeader?.split(' ')[1];
+  const decoded = jwt.verify(auth, process.env.JWT_SECRET);
+  const uId = decoded.userId;
+
+  const newOrgId = makeId(uId);
+
+  try {
+    const newOrg = await prisma.organisation.create({
+      data: {
+        orgId: newOrgId,
+        name: req.body.name,
+        description: req.body.description,
+      },
+    })
+
+    res.status(201).json({
+      "status": "success",
+      "message": "Organisation created successfully",
+      "data": newOrg,
+    })
+  } catch (err) {
+    res.status(400).json({
+      status: 'Bad Request',
+      message: 'Client error',
+      statusCode: 400
+    });
+  }
+})
+
+app.post('/api/organisations/:orgId/users', async (req, res) => {
+  const orgUser = await prisma.organisationsAndUsers.create({
+    data: {
+      user_id: req.body.userId,
+      org_id: req.params.orgId,
+    },
+  })
+
+  res.status(200).json({
+    "status": "success",
+    "message": "User added to organisation successfully",
+  })
 })
 
 app.listen(PORT, () => {
