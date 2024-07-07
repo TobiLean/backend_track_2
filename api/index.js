@@ -12,7 +12,9 @@ import Validator from 'validatorjs';
 const generateToken = new GenerateToken();
 
 //instantiating PrismaClient
-const prisma = new PrismaClient();
+const prisma = new PrismaClient().$connect().then((client) => {
+  console.log('Connected to Prisma Client');
+});
 
 //initialize server
 const app = express();
