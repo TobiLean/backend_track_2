@@ -13,7 +13,7 @@ export const authenticatedMiddleware = async function (req, res, next) {
   const auth = authHeader?.split(' ')[1];
 
   if (!auth) {
-    return res.status(401).json({message: 'Unauthorized access'});
+    return res.status(401).json({message: 'Unauthorized access/no auth'});
   }
 
   try {
@@ -25,7 +25,7 @@ export const authenticatedMiddleware = async function (req, res, next) {
     });
 
     if (!isValid) {
-      return res.status(401).json({message: 'Unauthorized'});
+      return res.status(401).json({message: 'Unauthorized access'});
     }
     next()
 

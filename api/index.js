@@ -17,7 +17,7 @@ const generateToken = new GenerateToken();
 const prisma = new PrismaClient()
 
 //initialize server
-const app = express();
+export const app = express();
 const PORT = process.env.PORT || 3456;
 
 app.use(bodyParser.json());
@@ -291,3 +291,5 @@ app.post('/api/organisations/:orgId/users', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server started on port ${PORT}`);
 })
+
+// exports.module = {app};
