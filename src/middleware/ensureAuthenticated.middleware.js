@@ -38,7 +38,11 @@ import pkg from 'jsonwebtoken';
 const {verify} = pkg;
 import {PrismaClient} from '@prisma/client';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient().$connect().then((client) => {
+  console.log('Connected to Prisma Client from middleware');
+}).catch(err=>{
+  console.log("Failed to connect to prisma from middleware: ",err);
+});
 
 export const authenticatedMiddleware = async function (req, res, next) {
   const authHeader = req.headers.authorization;
