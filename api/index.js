@@ -1,6 +1,8 @@
 import express from 'express';
 import bodyParser from 'body-parser';
-import {PrismaClient} from '@prisma/client';
+import prscl from '@prisma/client';
+const {PrismaClient} = prscl;
+// import {PrismaClient} from '@prisma/client';
 import crypto from 'node:crypto';
 import GenerateToken from "../src/provider/generateToken.provider.js";
 import BadRequestError, {ValidationError} from '../src/customErrors.js';
