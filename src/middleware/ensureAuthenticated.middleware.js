@@ -36,7 +36,10 @@
 import pkg from 'jsonwebtoken';
 
 const {verify} = pkg;
-import {PrismaClient} from '@prisma/client';
+
+import prscl from '@prisma/client';
+const {PrismaClient} = prscl;
+// import {PrismaClient} from '@prisma/client';
 
 const prisma = new PrismaClient().$connect().then((client) => {
   console.log('Connected to Prisma Client from middleware');
