@@ -6,11 +6,7 @@ import prscl from '@prisma/client';
 const {PrismaClient} = prscl;
 // import {PrismaClient} from '@prisma/client';
 
-const prisma = new PrismaClient().$connect().then((client) => {
-  console.log('Connected to Prisma Client from middleware');
-}).catch(err=>{
-  console.log("Failed to connect to prisma from middleware: ",err);
-});
+const prisma = new PrismaClient()
 
 export const authenticatedMiddleware = async function (req, res, next) {
   const authHeader = req.headers.authorization;
