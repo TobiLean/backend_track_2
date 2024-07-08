@@ -4,6 +4,7 @@
   "description": "2nd task of the Backend track for hng",
   "main": "api/index.js",
   "scripts": {
+    "postinstall": "prisma generate",
     "serve": "node api/index.js",
     "auto": "nodemon api/index.js",
     "start": "npm run serve",
